@@ -1,7 +1,12 @@
 """Vector store wrapper for Pinecone integration with LangChain."""
 
+import os
 from functools import lru_cache
 from typing import List
+
+# CRITICAL: Disable multiprocessing for serverless environments
+# This must be set BEFORE importing Pinecone
+os.environ["GRPC_ENABLE_FORK_SUPPORT"] = "0"
 
 from pinecone import Pinecone
 from langchain_core.documents import Document
@@ -19,15 +24,16 @@ def _get_vector_store() -> PineconeVectorStore:
     settings = get_settings()
 
     # Configure Pinecone for serverless (avoid ThreadPool issues)
+    # Use minimal threading to prevent multiprocessing errors
     pc = Pinecone(
         api_key=settings.pinecone_api_key,
-        pool_threads=1  # Single-threaded for serverless compatibility
+        pool_threads=1
     )
     
-    # Get index and configure it for single-threaded operation
+    # Get index with single-threaded configuration
     index = pc.Index(
         settings.pinecone_index_name,
-        pool_threads=1  # Critical: set pool_threads on Index too
+        pool_threads=1
     )
 
     embeddings = OpenAIEmbeddings(
