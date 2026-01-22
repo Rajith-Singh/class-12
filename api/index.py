@@ -9,8 +9,9 @@ from pathlib import Path
 root_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(root_dir))
 
+# Import the FastAPI app
 from src.app.api import app
 
-# Vercel expects a variable named 'app' or 'handler'
-# FastAPI's app instance can be used directly
-handler = app
+# Export app directly - Vercel's Python runtime will handle ASGI wrapping
+# Do NOT rename or wrap as 'handler' - that causes type errors
+
