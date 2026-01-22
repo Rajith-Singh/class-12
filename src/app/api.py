@@ -19,18 +19,19 @@ app = FastAPI(
     version="0.1.0",
 )
 
-# Static files are served directly by Vercel from the public/ directory
-# No need to mount StaticFiles here
+# Static files (CSS/JS) are served directly by Vercel from the public/ directory
+# HTML must be served from the Python function since it's not in public/
 
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 
 
 @app.get("/", include_in_schema=False)
-async def root() -> FileResponse:
+async def root() -> HTMLResponse:
     """Serve the single-page frontend index file."""
-    # Serve from public directory for Vercel deployment
-    index_path = Path(__file__).parent.parent.parent / "public" / "index.html"
-    return FileResponse(str(index_path))
+    # Read from src/app/static which is bundled with the function
+    index_path = Path(__file__).parent / "static" / "index.html"
+    html_content = index_path.read_text()
+    return HTMLResponse(content=html_content)
 
 
 @app.exception_handler(Exception)
