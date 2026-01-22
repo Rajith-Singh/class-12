@@ -2,7 +2,8 @@
 
 from langchain_core.tools import tool
 
-from ..retrieval.vector_store import retrieve
+# Use REST API implementation for serverless compatibility
+from ..retrieval.vector_store_rest import retrieve
 from ..retrieval.serialization import serialize_chunks, serialize_chunks_with_ids
 
 
