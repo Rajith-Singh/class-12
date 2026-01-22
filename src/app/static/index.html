@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>RAG QA — Evidence-Aware Answers</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <div class="header-panel">
+        <h1>RAG QA — Evidence-Aware Answers</h1>
+        <p class="subtitle">Upload a document, ask questions and inspect the source evidence.</p>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap grid">
+    <section class="card" id="uploadCard">
+      <h2 class="card-title">Upload Document</h2>
+      <div id="dropzone" class="dropzone">Drop PDF here or click to choose</div>
+      <input id="fileInput" type="file" accept="application/pdf" hidden />
+      <div id="uploadPreview" class="upload-preview hidden">
+        <div class="doc-icon">PDF</div>
+        <div class="upload-meta">
+          <div id="uploadName">example.pdf</div>
+          <div id="uploadSize" style="font-size:12px;color:var(--muted);">120 KB</div>
+        </div>
+      </div>
+      <div id="uploadProgress" class="upload-progress hidden" aria-hidden="true">
+        <div class="progress-bar"><div id="progressFill" class="progress-fill" style="width:0%"></div></div>
+        <div id="uploadPercent">0%</div>
+      </div>
+      <div class="controls">
+        <button id="uploadBtn" class="btn primary" disabled>Upload PDF</button>
+        <button id="clearBtn" class="btn secondary">Remove</button>
+      </div>
+      <div class="controls">
+        <div id="uploadStatus" class="status muted"></div>
+      </div>
+    </section>
+
+    <section class="card hidden" id="qaSection">
+      <h2 class="card-title">Ask a Question</h2>
+      <div class="qa-inner">
+        <div class="qa-panel">
+          <textarea id="questionInput" placeholder="Type your question..." rows="3"></textarea>
+          <div class="controls">
+            <button id="askBtn" class="btn primary">Ask</button>
+            <button id="clearQABtn" class="btn secondary">Clear</button>
+          </div>
+        </div>
+
+        <div id="answerContainer" class="answer card-result hidden"></div>
+        <div id="citationsRow" class="citations"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Modal -->
+  <div id="modal" class="modal hidden">
+    <div class="modal-content">
+      <button id="modalClose" class="modal-close">×</button>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+
+  <!-- Confirm Modal (themed) -->
+  <div id="confirmModal" class="modal hidden" aria-hidden="true">
+    <div class="modal-content">
+      <div class="confirm-box">
+        <div id="confirmMessage" style="font-size:16px;line-height:1.4"></div>
+      </div>
+      <div class="confirm-actions">
+        <button id="confirmCancel" class="btn secondary">Cancel</button>
+        <button id="confirmOk" class="btn primary">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
