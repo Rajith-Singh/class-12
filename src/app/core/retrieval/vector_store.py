@@ -23,7 +23,12 @@ def _get_vector_store() -> PineconeVectorStore:
         api_key=settings.pinecone_api_key,
         pool_threads=1  # Single-threaded for serverless compatibility
     )
-    index = pc.Index(settings.pinecone_index_name)
+    
+    # Get index and configure it for single-threaded operation
+    index = pc.Index(
+        settings.pinecone_index_name,
+        pool_threads=1  # Critical: set pool_threads on Index too
+    )
 
     embeddings = OpenAIEmbeddings(
         model=settings.openai_embedding_model,
