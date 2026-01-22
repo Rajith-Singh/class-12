@@ -103,7 +103,8 @@ async def index_pdf(file: UploadFile = File(...)) -> dict:
             detail="Only PDF files are supported.",
         )
 
-    upload_dir = Path("data/uploads")
+    # Use /tmp directory for Vercel serverless (only writable location)
+    upload_dir = Path("/tmp/uploads")
     upload_dir.mkdir(parents=True, exist_ok=True)
 
     file_path = upload_dir / file.filename
@@ -122,12 +123,12 @@ async def index_pdf(file: UploadFile = File(...)) -> dict:
 
 @app.post("/clear-cache", status_code=status.HTTP_200_OK)
 async def clear_cache() -> dict:
-    """Clear uploaded files from the local uploads directory.
+    """Clear uploaded files from the temporary uploads directory.
 
-    This deletes all files and subdirectories under `data/uploads`.
+    This deletes all files and subdirectories under `/tmp/uploads`.
     NOTE: This does NOT touch external vector stores (e.g., Pinecone).
     """
-    upload_dir = Path("data/uploads")
+    upload_dir = Path("/tmp/uploads")
     if not upload_dir.exists():
         return {"deleted": 0, "message": "No uploads to clear."}
 
