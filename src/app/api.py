@@ -21,7 +21,9 @@ app = FastAPI(
 )
 
 # Serve static frontend under /static and expose index at /
-app.mount("/static", StaticFiles(directory="src/app/static"), name="static")
+# Use absolute path from project root for Vercel compatibility
+static_dir = Path(__file__).parent / "static"
+app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
 from fastapi.responses import FileResponse
 
@@ -29,7 +31,8 @@ from fastapi.responses import FileResponse
 @app.get("/", include_in_schema=False)
 async def root() -> FileResponse:
     """Serve the single-page frontend index file."""
-    return FileResponse("src/app/static/index.html")
+    index_path = Path(__file__).parent / "static" / "index.html"
+    return FileResponse(str(index_path))
 
 
 @app.exception_handler(Exception)
