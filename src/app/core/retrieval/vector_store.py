@@ -1,12 +1,7 @@
 """Vector store wrapper for Pinecone integration with LangChain."""
 
-import os
 from functools import lru_cache
 from typing import List
-
-# CRITICAL: Disable multiprocessing for serverless environments
-# This must be set BEFORE importing Pinecone
-os.environ["GRPC_ENABLE_FORK_SUPPORT"] = "0"
 
 from pinecone import Pinecone
 from langchain_core.documents import Document
@@ -23,21 +18,11 @@ def _get_vector_store() -> PineconeVectorStore:
     """Create a PineconeVectorStore instance configured from settings."""
     settings = get_settings()
 
-    # Configure Pinecone for serverless (avoid ThreadPool issues)
-    # Use minimal threading to prevent multiprocessing errors
-    pc = Pinecone(
-        api_key=settings.pinecone_api_key,
-        pool_threads=1
-    )
-    
-    # Get index with single-threaded configuration
-    index = pc.Index(
-        settings.pinecone_index_name,
-        pool_threads=1
-    )
+    pc = Pinecone(api_key=settings.pinecone_api_key)
+    index = pc.Index(settings.pinecone_index_name)
 
     embeddings = OpenAIEmbeddings(
-        model=settings.openai_embedding_model,
+        model=settings.openai_embedding_model_name,
         api_key=settings.openai_api_key,
     )
 
@@ -115,3 +100,11 @@ def index_documents(docs: List[Document]) -> int:
     vector_store = _get_vector_store()
     vector_store.add_documents(all_chunks)
     return len(all_chunks)
+
+
+def clear_index():
+    """Delete all vectors from the Pinecone index."""
+    settings = get_settings()
+    pc = Pinecone(api_key=settings.pinecone_api_key)
+    index = pc.Index(settings.pinecone_index_name)
+    index.delete(delete_all=True)

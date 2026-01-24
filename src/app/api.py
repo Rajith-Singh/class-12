@@ -3,10 +3,12 @@ import shutil
 
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile, status
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from .models import QuestionRequest, QAResponse
 from .services.qa_service import answer_question
 from .services.indexing_service import index_pdf_file
+from .core.retrieval.vector_store import clear_index
 
 
 app = FastAPI(
@@ -19,19 +21,16 @@ app = FastAPI(
     version="0.1.0",
 )
 
-# Static files (CSS/JS) are served directly by Vercel from the public/ directory
-# HTML must be served from the Python function since it's not in public/
+# Serve static frontend under /static and expose index at /
+app.mount("/static", StaticFiles(directory="src/app/static"), name="static")
 
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse
 
 
 @app.get("/", include_in_schema=False)
-async def root() -> HTMLResponse:
+async def root() -> FileResponse:
     """Serve the single-page frontend index file."""
-    # Read from src/app/static which is bundled with the function
-    index_path = Path(__file__).parent / "static" / "index.html"
-    html_content = index_path.read_text()
-    return HTMLResponse(content=html_content)
+    return FileResponse("src/app/static/index.html")
 
 
 @app.exception_handler(Exception)
@@ -103,8 +102,10 @@ async def index_pdf(file: UploadFile = File(...)) -> dict:
             detail="Only PDF files are supported.",
         )
 
-    # Use /tmp directory for Vercel serverless (only writable location)
-    upload_dir = Path("/tmp/uploads")
+    # Clear the index before processing the new file
+    clear_index()
+
+    upload_dir = Path("data/uploads")
     upload_dir.mkdir(parents=True, exist_ok=True)
 
     file_path = upload_dir / file.filename
@@ -123,12 +124,12 @@ async def index_pdf(file: UploadFile = File(...)) -> dict:
 
 @app.post("/clear-cache", status_code=status.HTTP_200_OK)
 async def clear_cache() -> dict:
-    """Clear uploaded files from the temporary uploads directory.
+    """Clear uploaded files from the local uploads directory.
 
-    This deletes all files and subdirectories under `/tmp/uploads`.
+    This deletes all files and subdirectories under `data/uploads`.
     NOTE: This does NOT touch external vector stores (e.g., Pinecone).
     """
-    upload_dir = Path("/tmp/uploads")
+    upload_dir = Path("data/uploads")
     if not upload_dir.exists():
         return {"deleted": 0, "message": "No uploads to clear."}
 
