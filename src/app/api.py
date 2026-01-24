@@ -1,8 +1,11 @@
 from pathlib import Path
 import shutil
+import tempfile
+import os
+from typing import Optional
 
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from .models import QuestionRequest, QAResponse
@@ -24,7 +27,14 @@ app = FastAPI(
 # Serve static frontend under /static and expose index at /
 app.mount("/static", StaticFiles(directory="src/app/static"), name="static")
 
-from fastapi.responses import FileResponse
+def get_upload_dir() -> Path:
+    """Get the appropriate upload directory based on environment."""
+    if os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
+        # Use /tmp in serverless environments (Vercel, AWS Lambda)
+        return Path(tempfile.gettempdir()) / "uploads"
+    else:
+        # Use local directory for development
+        return Path("data/uploads")
 
 
 @app.get("/", include_in_schema=False)
@@ -91,7 +101,7 @@ async def index_pdf(file: UploadFile = File(...)) -> dict:
 
     This endpoint:
     - Accepts a PDF file upload
-    - Saves it to the local `data/uploads/` directory
+    - Saves it to a temporary directory (in-memory for serverless)
     - Uses PyPDFLoader to load the document into LangChain `Document` objects
     - Indexes those documents into the configured Pinecone vector store
     """
@@ -105,31 +115,60 @@ async def index_pdf(file: UploadFile = File(...)) -> dict:
     # Clear the index before processing the new file
     clear_index()
 
-    upload_dir = Path("data/uploads")
+    # Get appropriate upload directory
+    upload_dir = get_upload_dir()
     upload_dir.mkdir(parents=True, exist_ok=True)
 
-    file_path = upload_dir / file.filename
+    # Create a unique filename to avoid conflicts
+    import uuid
+    unique_filename = f"{uuid.uuid4()}_{file.filename}"
+    file_path = upload_dir / unique_filename
+    
+    # Save file
     contents = await file.read()
     file_path.write_bytes(contents)
 
-    # Index the saved PDF
-    chunks_indexed = index_pdf_file(file_path)
+    try:
+        # Index the saved PDF
+        chunks_indexed = index_pdf_file(file_path)
+        
+        # Clean up the temporary file immediately after processing
+        if file_path.exists():
+            file_path.unlink()
+            
+    except Exception as e:
+        # Clean up on error too
+        if file_path.exists():
+            file_path.unlink()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error processing PDF: {str(e)}",
+        )
 
     return {
         "filename": file.filename,
         "chunks_indexed": chunks_indexed,
         "message": "PDF indexed successfully.",
+        "note": "File was processed and cleaned up automatically." if os.environ.get("VERCEL") else None,
     }
 
 
 @app.post("/clear-cache", status_code=status.HTTP_200_OK)
 async def clear_cache() -> dict:
-    """Clear uploaded files from the local uploads directory.
+    """Clear uploaded files from the upload directory.
 
-    This deletes all files and subdirectories under `data/uploads`.
-    NOTE: This does NOT touch external vector stores (e.g., Pinecone).
+    NOTE: In serverless environments (Vercel), files are automatically
+    cleaned up after function execution. This is mainly for development.
     """
-    upload_dir = Path("data/uploads")
+    upload_dir = get_upload_dir()
+    
+    # Don't try to clear /tmp root directory in serverless
+    if str(upload_dir) == "/tmp":
+        return {
+            "deleted": 0,
+            "message": "In serverless environment, files are automatically cleaned up after execution.",
+        }
+    
     if not upload_dir.exists():
         return {"deleted": 0, "message": "No uploads to clear."}
 
@@ -147,3 +186,10 @@ async def clear_cache() -> dict:
             continue
 
     return {"deleted": deleted, "message": "Local upload cache cleared."}
+
+
+# Optional: Add a health check endpoint for Vercel monitoring
+@app.get("/health")
+async def health_check() -> dict:
+    """Health check endpoint for monitoring."""
+    return {"status": "healthy", "environment": "production" if os.environ.get("VERCEL") else "development"}
