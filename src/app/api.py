@@ -19,13 +19,26 @@ from .services.indexing_service import index_pdf_file
 from .core.retrieval.vector_store import clear_index
 from .core.config import get_settings
 
-# Cloudinary configuration
-settings = get_settings()
-cloudinary.config(
-    cloud_name=settings.cloudinary_cloud_name,
-    api_key=settings.cloudinary_api_key,
-    api_secret=settings.cloudinary_api_secret,
-)
+# Cloudinary configuration (lazy initialization)
+_settings_instance = None
+
+def _ensure_cloudinary_config():
+    """Ensure Cloudinary is configured. Raises HTTPException if not configured."""
+    global _settings_instance
+    if _settings_instance is None:
+        _settings_instance = get_settings()
+    
+    if not _settings_instance.cloudinary_cloud_name:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Cloudinary is not configured. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET environment variables."
+        )
+    
+    cloudinary.config(
+        cloud_name=_settings_instance.cloudinary_cloud_name,
+        api_key=_settings_instance.cloudinary_api_key,
+        api_secret=_settings_instance.cloudinary_api_secret,
+    )
 
 app = FastAPI(
     title="Class 12 Multi-Agent RAG Demo",
@@ -59,6 +72,9 @@ async def index_pdf(file: UploadFile = File(...)) -> dict:
     """
     if file.content_type != "application/pdf":
         raise HTTPException(status_code=400, detail="Only PDF files are supported.")
+
+    # Ensure Cloudinary is configured before use
+    _ensure_cloudinary_config()
 
     try:
         # Upload the file to Cloudinary

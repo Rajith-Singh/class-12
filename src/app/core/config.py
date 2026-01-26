@@ -4,6 +4,7 @@ This module uses Pydantic Settings to load and validate environment variables
 for OpenAI models, Pinecone settings, and other system parameters.
 """
 
+from typing import Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -19,12 +20,12 @@ class Settings(BaseSettings):
     pinecone_api_key: str
     pinecone_index_name: str
 
-    # Cloudinary Configuration
-    # Note: Ensure CLOUDINARY_CLOUD_NAME is set in your .env file
+    # Cloudinary Configuration (optional - only needed for PDF uploads)
+    # Note: Ensure CLOUDINARY_CLOUD_NAME is set in your .env file or Vercel environment variables
     # (previously NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME)
-    cloudinary_cloud_name: str
-    cloudinary_api_key: str
-    cloudinary_api_secret: str
+    cloudinary_cloud_name: Optional[str] = None
+    cloudinary_api_key: Optional[str] = None
+    cloudinary_api_secret: Optional[str] = None
 
     # Retrieval Configuration
     retrieval_k: int = 4
