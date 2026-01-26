@@ -44,35 +44,42 @@ async def qa_endpoint(payload: QuestionRequest) -> QAResponse:
 @app.post("/index-pdf", status_code=status.HTTP_200_OK)
 async def index_pdf(file: UploadFile = File(...)) -> dict:
     """
-    EASY METHOD: Process PDF entirely in memory to avoid Vercel Disk Errors.
+    Handle PDF uploads. On Vercel, files must be saved to the /tmp directory.
     """
     if file.content_type != "application/pdf":
         raise HTTPException(status_code=400, detail="Only PDF files are supported.")
 
-    # 1. Clear the current vector index
-    clear_index()
+    # Vercel has a writable /tmp directory
+    temp_dir = Path("/tmp") / "pdf_uploads"
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    temp_file_path = temp_dir / file.filename
 
     try:
-        # 2. Read the file into memory (RAM) instead of saving to a folder
-        pdf_content = await file.read()
-        
-        # 3. Pass the raw bytes to your indexing service
-        # IMPORTANT: Your index_pdf_file function must be able to handle 
-        # raw bytes or a file-like object (io.BytesIO)
-        chunks_indexed = index_pdf_file(pdf_content)
+        # Save the uploaded file to the /tmp directory
+        with open(temp_file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        # 1. Clear the current vector index
+        clear_index()
+
+        # 2. Index the new PDF file
+        chunks_indexed = index_pdf_file(temp_file_path)
         
         return {
             "filename": file.filename,
             "chunks_indexed": chunks_indexed,
-            "message": "PDF indexed successfully (processed in memory)."
+            "message": "PDF indexed successfully.",
         }
 
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Indexing failed: {str(e)}"
+            detail=f"Indexing failed: {str(e)}",
         )
     finally:
+        # Clean up the temp file
+        if temp_file_path.exists():
+            temp_file_path.unlink()
         await file.close()
 
 @app.get("/health")
