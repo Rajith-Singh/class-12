@@ -8,11 +8,11 @@ from langchain_community.document_loaders import PyPDFLoader
 from ..core.retrieval.vector_store_rest import index_documents
 
 
-def index_pdf_file(file_path: Path) -> int:
-    """Load a PDF from disk and index it into the vector DB.
+def index_pdf_file(file_path: str) -> int:
+    """Load a PDF from a path or URL and index it into the vector DB.
 
     Args:
-        file_path: Path to the PDF file on disk.
+        file_path: Path or URL to the PDF file.
 
     Returns:
         Number of document chunks indexed.

@@ -19,6 +19,13 @@ class Settings(BaseSettings):
     pinecone_api_key: str
     pinecone_index_name: str
 
+    # Cloudinary Configuration
+    # Note: Ensure CLOUDINARY_CLOUD_NAME is set in your .env file
+    # (previously NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME)
+    cloudinary_cloud_name: str
+    cloudinary_api_key: str
+    cloudinary_api_secret: str
+
     # Retrieval Configuration
     retrieval_k: int = 4
 
